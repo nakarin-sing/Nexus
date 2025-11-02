@@ -27,13 +27,3 @@ __all__ = [
     "safe_std",
     "safe_norm",
 ]
-
-# ==================== tests/__init__.py ====================
-"""
-Test suite for NEXUS
-"""
-
-# ==================== examples/__init__.py ====================
-"""
-Examples for NEXUS usage
-"""
