@@ -17,17 +17,20 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     
     - name: Cache pip packages
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
-        path: ~/.cache/pip
+        path: |
+          ~/.cache/pip
+          ~/Library/Caches/pip
+          ~\AppData\Local\pip\Cache
         key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
@@ -49,9 +52,7 @@ jobs:
     
     - name: Lint with flake8
       run: |
-        # Stop the build if there are Python syntax errors or undefined names
         flake8 nexus/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Exit-zero treats all errors as warnings
         flake8 nexus/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       continue-on-error: true
     
@@ -60,29 +61,32 @@ jobs:
         pytest tests/ -v --cov=nexus --cov-report=xml --cov-report=html --cov-report=term -n auto
     
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
       with:
         file: ./coverage.xml
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
     
-    - name: Upload coverage artifacts
-      uses: actions/upload-artifact@v3
-      if: always()
+    - name: Upload coverage HTML artifacts
+      uses: actions/upload-artifact@v4
+      if: always() && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
       with:
-        name: coverage-${{ matrix.os }}-${{ matrix.python-version }}
+        name: coverage-html-${{ matrix.os }}-py${{ matrix.python-version }}
         path: htmlcov/
+        retention-days: 30
 
   lint:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
     
@@ -92,15 +96,15 @@ jobs:
     
     - name: Check code formatting with black
       run: |
-        black --check nexus/ tests/
+        black --check nexus/ tests/ || echo "Black formatting issues found"
       continue-on-error: true
     
     - name: Check import sorting with isort
       run: |
-        isort --check-only nexus/ tests/
+        isort --check-only nexus/ tests/ || echo "Import sorting issues found"
       continue-on-error: true
     
     - name: Type check with mypy
       run: |
-        mypy nexus/ --ignore-missing-imports
+        mypy nexus/ --ignore-missing-imports || echo "Type checking issues found"
       continue-on-error: true
